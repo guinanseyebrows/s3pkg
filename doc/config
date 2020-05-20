@@ -1,0 +1,6 @@
+# s3pkg configuration
+
+# name of your S3 bucket
+bucket=""
+# package directory prefix
+repo=""
