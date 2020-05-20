@@ -46,7 +46,18 @@ get_remote_pkg () {
 fi
 }
 
+get_remote_manifest () {
+    remote_manifest=$(aws s3api list-objects-v2 \
+        --bucket "$bucketname" \
+        --query "Contents[?contains(Key, '${prefix}/manifest')].Key" \
+        --output text )   
+    if [ ! "${remote_pkg}" ] ; then
+        printf "${packagename} manifest not found.\n"
+        exit 1
+}
+
 # user function to search for packages in remote repo. 
+# needs work: package description from manifest
 # might build in get_remote_pkg and add an option to run quietly for usage in other functions
 search () {
     get_remote_pkg
@@ -61,12 +72,12 @@ install () {
         exit
         else
             aws s3 cp s3://${bucketname}/${remote_pkg} "${cache_dir}" 
-            # untar into cachedir
+            # get remote manifest
+            # get remote package
+                # untar into cachedir
             # while read manifest
-                # ignore lines that start with #
-                # chmod file using 3rd field in manifest
-                # move file into destination directory described in 2nd field in manifest
-                
+                # chmod and move files into destination directory 
+                eval $(awk '/:/ {next}  {split($0,a," "); print "chmod " $3 " ./" $1 "; " "mv ./" $1 " " $2 }' "${manifest}") 
            printf "${remote_pkg}\n" | sed 's:.*/::' >> "${local_pkglist}" 
     fi
 }
