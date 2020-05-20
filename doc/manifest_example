@@ -1,0 +1,5 @@
+# manifest example
+#name   packagename
+#version    0.1
+file1   /path/to/destination    0755
+file2   /path/to/other/folder   0644
