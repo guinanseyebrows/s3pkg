@@ -11,14 +11,20 @@ local_dir="/usr/local/$0"
 cache_dir="${local_dir}/.cache"
 local_pkglist="${local_dir}/pkglist"
 prefix="${repo}/${packagename}"
-config=$([ "${local_dir}"/config ])
+config="${local_dir}/config"
+
+if [ "${option}" = "bootstrap" ] ; then printf "\n"
+    elif [ ! -f "$config" ] ; then printf "Config file error\n" ; exit 1
+    else source "${config}"
+fi
+
 if [ ! "$option" ] ; then printf "USAGE: $0 <install/remove/update/search> <package-name>\n" ; exit ;fi
-if [ ! "$config" ] ; then printf "Config file error\n" ; exit 1 ;fi
 
 bootstrap () {
-mkdir -p "${local_dir}/{bin,.cache}"
-touch "${local_pkglist}"
-touch "${localdir}/config"
+    # for now, create an empty config. maybe add some interactivity here later?
+    mkdir -p "${cache_dir}"
+    touch "${local_pkglist}"
+    echo 'bucket=""\nrepo=""' > "${config}" 
 }
 
 get_remote_pkg () {
