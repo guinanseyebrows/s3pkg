@@ -6,7 +6,7 @@
 command -v aws >/dev/null 2>&1 || { printf >&2 "ERROR: AWS CLI utilities are not installed.\n" ; exit 1; } 
 command -v jq >/dev/null 2>&1 || { printf >&2 "ERROR: jq is not installed.\n" ; exit 1; } 
 
-
+set -u 
 # set up intitial environment variables
 option=$1
 pkg_name=$2
@@ -23,6 +23,7 @@ if [ ! -f "$config" ] ; then
 fi
 
 # set up environment variables that rely on $config
+
 prefix="${repo}/${pkg_name}"
 cache_dir="${local_dir}/cache"
 manifest_dir="${local_dir}/manifests"
@@ -30,8 +31,6 @@ local_pkglist="${local_dir}/pkglist"
 
 
 bootstrap () {
-    local_dir="${pkg_name}"
-    local_pkglist="${local_dir}/pkglist"
     if [ ! "${pkg_name}" ] ; then printf "ERROR: s3pkg dir not specified.\nUSAGE: $0 bootstrap /path/to/s3pkg \n" ; exit 1 ; fi
     mkdir -p "${cache_dir}"
     mkdir -p "${manifest_dir}"
@@ -98,6 +97,14 @@ install () {
 
 # remove package function
 # check for manifest in package cache first, if no cache, use get_remote_pkg?
+remove () {
+    if [ ! $(grep "${pkg_name}" "${local_pkglist}") ] ; then
+        printf "${pkg_name} does not exist in local package list.\n"
+        exit 1
+    fi
+    printf "Removing ${pkg_name}...\n"
+
+}
 
 # Do The Thing
 
