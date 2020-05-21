@@ -6,89 +6,96 @@
 command -v aws >/dev/null 2>&1 || { printf >&2 "ERROR: AWS CLI utilities are not installed.\n" ; exit 1; } 
 command -v jq >/dev/null 2>&1 || { printf >&2 "ERROR: jq is not installed.\n" ; exit 1; } 
 
-# set up environment variables
-option=$1
-packagename=$2
-local_dir="/usr/local/$0"
-cache_dir="${local_dir}/.cache"
-local_pkglist="${local_dir}/pkglist"
-prefix="${repo}/${packagename}"
-config="${local_dir}/config"
+# usage
+if [ ! "$option" ] ; then printf "USAGE: $0 <install/remove/search> <package-name>\n" ; exit ;fi
 
-# check for config file and source it - parsing it would be nice. still need a general error handler
-if [ "${option}" = "bootstrap" ] ; then printf "" # is there a better way to continue?
-    elif [ ! -f "$config" ] ; then printf "Config file error\n" ; exit 1
-    else source "${config}"
+# set up intitial environment variables
+option=$1
+pkg_name=$2
+config="/usr/local/s3pkg/config"
+
+# source configuration
+if [ ! -f "$config" ] ; then 
+    printf "Missing config file. Specify config file and run 's3pkg bootstrap' and edit configuration to complete setup. \n" 
+    exit 1
+    else . "${config}"
 fi
 
-# again, need general error handler
-if [ ! "$option" ] ; then printf "USAGE: $0 <install/remove/update/search> <package-name>\n" ; exit ;fi
+# set up environment variables that rely on $config
+prefix="${repo}/${pkg_name}"
+cache_dir="${local_dir}/cache"
+manifest_dir="${local_dir}/manifests"
+local_pkglist="${local_dir}/pkglist"
+
 
 bootstrap () {
-    # for now, create an empty config. maybe add some interactivity here later?
+    local_dir="${pkg_name}"
+    local_pkglist="${local_dir}/pkglist"
+    if [ ! "${pkg_name}" ] ; then printf "ERROR: s3pkg dir not specified.\nUSAGE: $0 bootstrap /path/to/s3pkg \n" ; exit 1 ; fi
     mkdir -p "${cache_dir}"
+    mkdir -p "${manifest_dir}"
     touch "${local_pkglist}"
-    echo 'bucket=""\nrepo=""' > "${config}" 
 }
 
 # utility function that checks for package in remote repo
 get_remote_pkg () {
-    if [ ! "${packagename}" ] ; then printf "USAGE: $0 "${option}"  package-name\n" ; exit ;fi
+    if [ ! "${pkg_name}" ] ; then printf "USAGE: $0 "${option}"  package-name\n" ; exit ;fi
 
     remote_pkg=$(aws s3api list-objects-v2 \
-        --bucket "$bucketname" \
-        --query "Contents[?contains(Key, '${prefix}/${packagename}-')].Key" \
-        --output text  )
-
+        --bucket "$bucket_name" \
+        --query "Contents[?contains(Key, '${prefix}/${pkg_name}-')].Key" \
+        --output text  | sed 's:.*/::') 
     if [ ! "${remote_pkg}" ] ; then 
-        printf "${packagename} not found.\n"
+        printf "${pkg_name} not found.\n"
         exit 1
 fi
 }
 
 get_remote_manifest () {
     remote_manifest=$(aws s3api list-objects-v2 \
-        --bucket "$bucketname" \
-        --query "Contents[?contains(Key, '${prefix}/manifest')].Key" \
+        --bucket "$bucket_name" \
+        --query "Contents[?contains(Key, '${prefix}/${pkg_name}.manifest')].Key" \
         --output text )   
-    if [ ! "${remote_pkg}" ] ; then
-        printf "${packagename} manifest not found.\n"
+    if [ ! "${remote_manifest}" ] ; then
+        printf "${pkg_name} manifest not found.\n"
         exit 1
+    fi
+    aws s3 cp "s3://${bucket_name}/${prefix}/${pkg_name}.manifest" -
 }
 
 # user function to search for packages in remote repo. 
 # needs work: package description from manifest
 # might build in get_remote_pkg and add an option to run quietly for usage in other functions
 search () {
-    get_remote_pkg
-    printf "${remote_pkg}\n" | sed 's:.*/::'
+    get_remote_manifest | grep ':'
 }
 
-# install a package
 install () {
     get_remote_pkg
-    if [ $(grep ${packagename} ${local_pkglist}) ] ; then
-        echo "$packagename already installed."
-        exit
+    if [ $(grep "${pkg_name}" "${local_pkglist}") ] ; then
+        printf "Updating ${pkg_name}.\n"
         else
-            aws s3 cp s3://${bucketname}/${remote_pkg} "${cache_dir}" 
-            # get remote manifest
-            # get remote package
+            printf "Installing ${pkg_name}... \n"
+            aws s3 cp "s3://${bucket_name}/${prefix}/${pkg_name}.manifest" "${manifest_dir}/"
+            aws s3 cp "s3://${bucket_name}/${prefix}/${remote_pkg}" "${cache_dir}/" 
                 # untar into cachedir
-            # while read manifest
-                # chmod and move files into destination directory 
-                eval $(awk '/:/ {next}  {split($0,a," "); print "chmod " $3 " ./" $1 "; " "mv ./" $1 " " $2 }' "${manifest}") 
-           printf "${remote_pkg}\n" | sed 's:.*/::' >> "${local_pkglist}" 
+            pkg_dir="${cache_dir}/${pkg_name}"
+            mkdir -p "${pkg_dir}"
+            tar xvzf "${cache_dir}/${remote_pkg}" -C "${pkg_dir}"/
+
+            # move files to destination and apply permissions
+            grep -v ':' "${manifest_dir}/${pkg_name}.manifest" | while read -r filename destination permission _ ; do 
+                mv "${cache_dir}/${remote_pkg}/${filename}" "${destination}" 
+                chmod -- "${permission}" "${destination}" 
+            done 
+        printf "${remote_pkg}\n" | sed 's:.*/::' >> "${local_pkglist}" 
     fi
 }
-
-# update package function
-# check version number against local_pkglist entry and run install if remote version is higher
-# maybe wrap this in a for loop for global updates?
 
 # remove package function
 # check for manifest in package cache first, if no cache, use get_remote_pkg?
 
 # Do The Thing
 
-"${option}" 
+
+"${option}" "${pkg_name}" 

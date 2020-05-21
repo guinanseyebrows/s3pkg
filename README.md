@@ -17,3 +17,7 @@ It's also going to be nice not to have to call scripts with paths, since they'll
 * Don't name your scripts anything that might already exist in your /usr/bin.
 * In fact, don't name your scripts anything that might already exist in any repos you might use with your system's package manager.
 
+## todo
+* remove package option
+* interactive bootstrap - separate script?
+* package generation framework/script (oof)
