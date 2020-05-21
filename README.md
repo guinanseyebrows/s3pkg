@@ -19,5 +19,5 @@ It's also going to be nice not to have to call scripts with paths, since they'll
 
 ## todo
 * remove package option
-* interactive bootstrap - separate script?
+* separate bootstrap into new script
 * package generation framework/script (oof)
