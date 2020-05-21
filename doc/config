@@ -1,6 +1,11 @@
 # s3pkg configuration
 
 # name of your S3 bucket
-bucket=""
+bucket_name=""
 # package directory prefix
 repo=""
+
+# defaults 
+local_dir="/usr/local/s3pkg"
+cache_dir="${local_dir}/cache"
+

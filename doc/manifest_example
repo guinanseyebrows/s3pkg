@@ -1,5 +1,6 @@
-# manifest example
-#name   packagename
-#version    0.1
-file1   /path/to/destination    0755
-file2   /path/to/other/folder   0644
+name: mypackage
+version: 0.1
+description: A short description of the package
+file1 /path/to/destination/file1 0755 
+file2 /path/to/other/file/file2 0644
+file3 /path/to/config/file3 0600
