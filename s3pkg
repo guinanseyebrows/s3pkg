@@ -6,13 +6,14 @@
 command -v aws >/dev/null 2>&1 || { printf >&2 "ERROR: AWS CLI utilities are not installed.\n" ; exit 1; } 
 command -v jq >/dev/null 2>&1 || { printf >&2 "ERROR: jq is not installed.\n" ; exit 1; } 
 
-# usage
-if [ ! "$option" ] ; then printf "USAGE: $0 <install/remove/search> <package-name>\n" ; exit ;fi
 
 # set up intitial environment variables
 option=$1
 pkg_name=$2
 config="/usr/local/s3pkg/config"
+
+# usage
+if [ ! "$option" ] ; then printf "USAGE: $0 <install/remove/search> <package-name>\n" ; exit ;fi
 
 # source configuration
 if [ ! -f "$config" ] ; then 
@@ -64,8 +65,6 @@ get_remote_manifest () {
 }
 
 # user function to search for packages in remote repo. 
-# needs work: package description from manifest
-# might build in get_remote_pkg and add an option to run quietly for usage in other functions
 search () {
     get_remote_manifest | grep ':'
 }
@@ -73,22 +72,27 @@ search () {
 install () {
     get_remote_pkg
     if [ $(grep "${pkg_name}" "${local_pkglist}") ] ; then
-        printf "Updating ${pkg_name}.\n"
-        else
-            printf "Installing ${pkg_name}... \n"
-            aws s3 cp "s3://${bucket_name}/${prefix}/${pkg_name}.manifest" "${manifest_dir}/"
-            aws s3 cp "s3://${bucket_name}/${prefix}/${remote_pkg}" "${cache_dir}/" 
-                # untar into cachedir
-            pkg_dir="${cache_dir}/${pkg_name}"
-            mkdir -p "${pkg_dir}"
-            tar xvzf "${cache_dir}/${remote_pkg}" -C "${pkg_dir}"/
+        printf "Updating ${pkg_name}...\n"
+        else printf "Installing ${pkg_name}... \n"
+    fi
+            
+    aws s3 cp "s3://${bucket_name}/${prefix}/${pkg_name}.manifest" "${manifest_dir}/"
+    aws s3 cp "s3://${bucket_name}/${prefix}/${remote_pkg}" "${cache_dir}/" 
+    # untar into cachedir
+    pkg_dir="${cache_dir}/${pkg_name}"
+    mkdir -p "${pkg_dir}"
+    tar xzf "${cache_dir}/${remote_pkg}" -C "${pkg_dir}"/
 
-            # move files to destination and apply permissions
-            grep -v ':' "${manifest_dir}/${pkg_name}.manifest" | while read -r filename destination permission _ ; do 
-                mv "${cache_dir}/${remote_pkg}/${filename}" "${destination}" 
-                chmod -- "${permission}" "${destination}" 
-            done 
-        printf "${remote_pkg}\n" | sed 's:.*/::' >> "${local_pkglist}" 
+    # move files to destination and apply permissions
+    grep -v ':' "${manifest_dir}/${pkg_name}.manifest" | while read -r filename destination permission _ ; do 
+        # need a way to apply correct permissions to created directories!
+        mkdir -p "${destination}"
+        mv "${cache_dir}/${pkg_name}/${filename}" "${destination}/${filename}" 
+        chmod -- "${permission}" "${destination}/${filename}" 
+    done 
+    
+    if [ ! $(grep "${pkg_name}" "${local_pkglist}") ] ; then 
+        printf "${pkg_name}\n" | sed 's:.*/::' >> "${local_pkglist}" 
     fi
 }
 
