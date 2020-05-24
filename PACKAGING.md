@@ -11,14 +11,14 @@ After that, list the directories that need to be created specifically for this p
 Finally, list the files that will be installed. The first field is the name of the file (which should match the filename in the .tar.gz containing the package files). The second field is the destination directory (no trailing slash). Finally, the third field contains the permissions that should be applied to the new directory.
 
 #### Example manifest
-  name: my-great-package
-  version: 0.1
-  description: provides disruptive tools to collaboratively iterate cost effective methods of empowerment
-  [dir] /usr/local/my-great-tool/config 0755
-  [dir] /usr/local/my-great-tool/secure 0644
-  my-great-package /usr/local/bin/my-great-tool 0755
-  my-great-config /usr/local/my-great-tool/config 0755
-  credentials /usr/local/my-great-tool/secure 0600
+```name: my-great-package
+version: 0.1
+description: provides disruptive tools to collaboratively iterate cost effective methods of empowerment
+[dir] /usr/local/my-great-tool/config 0755
+[dir] /usr/local/my-great-tool/secure 0644
+my-great-package /usr/local/bin/my-great-tool 0755
+my-great-config /usr/local/my-great-tool/config 0755
+credentials /usr/local/my-great-tool/secure 0600```
 
 #### Notes
 * Filenames and directory names must not contain ':'. 
