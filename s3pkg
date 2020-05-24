@@ -4,7 +4,6 @@
 
 # dependency check
 command -v aws >/dev/null 2>&1 || { printf >&2 "ERROR: AWS CLI utilities are not installed.\n" ; exit 1; } 
-command -v jq >/dev/null 2>&1 || { printf >&2 "ERROR: jq is not installed.\n" ; exit 1; } 
 
 # set up intitial environment variables
 option=$1
@@ -83,13 +82,16 @@ install () {
     # move files to destination and apply permissions
     grep -v ':' "${manifest_dir}/${pkg_name}.manifest" | while read -r filename destination permission _ ; do 
         if [ "${filename}" = '[dir]' ] ; then
-            mkdir -v -p -m "${permission}" "${destination}" | cut -f 4 -d ' ' > "${manifest_dir}/${pkg_name}.install"
+            mkdir -p -m "${permission}" "${destination}" 
+            printf "${destination}\n" >> "${manifest_dir}/${pkg_name}.install"
+        else
+            mv "${cache_dir}/${pkg_name}/${filename}" "${destination}/${filename}" 
+            chmod -- "${permission}" "${destination}/${filename}" 
         fi
-        mv "${cache_dir}/${pkg_name}/${filename}" "${destination}/${filename}" 
-        chmod -- "${permission}" "${destination}/${filename}" 
     done 
     
     if [ ! $(grep "${pkg_name}" "${local_pkglist}") ] ; then 
+        rmdir "${cache_dir}/${pkg_name}"
         printf "${pkg_name}\n" | sed 's:.*/::' >> "${local_pkglist}" 
     fi
 }
@@ -105,15 +107,19 @@ remove () {
     # remove if it is
     printf "Removing ${pkg_name}...\n"
     # delete files (not directories)
-    grep -v ':' "${manifest_dir}/${pkg_name}.manifest" | sed '1!G;h;$!d' | while read -r filename destination permission _ ; do
+    grep -v ':' "${manifest_dir}/${pkg_name}.manifest" | tac | while read -r filename destination permission _ ; do
         if [ "${filename}" != '[dir]' ] ; then
             rm "${destination}/${filename}"
         fi
     done
     # delete directories created by install
-    while read directory ; do 
+    # only removes directories explicitly listed in the manifest 
+    # will not remove higher-level directories created by install() if they did not exist at the time of install 
+    tac "${manifest_dir}/${pkg_name}.install" | while read directory ; do 
         rmdir "${directory}" 
-    done < "${pkg_name}.install"
+    done 
+    # add cleanup (remove manifest/install files and clean up pkglist)
+    
 }
 
 # Do The Thing
