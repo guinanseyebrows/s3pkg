@@ -8,7 +8,7 @@ Its goal is to provide an easy way to maintain a custom repository of scripts/ut
 
 It's currently written in POSIX sh because I'm a sadist.
 
-## features
+**features**
 * install a package: `s3pkg install <pkg_name>`
 * remove a package: `s3pkg remove <pkg_name>`
 
