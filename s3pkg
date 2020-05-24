@@ -1,12 +1,11 @@
 #!/bin/sh
 
-# writing a package manager in sh because i am an idiot
+# writing a package manager in sh (dash) because i am an idiot
 
 # dependency check
 command -v aws >/dev/null 2>&1 || { printf >&2 "ERROR: AWS CLI utilities are not installed.\n" ; exit 1; } 
 command -v jq >/dev/null 2>&1 || { printf >&2 "ERROR: jq is not installed.\n" ; exit 1; } 
 
-set -u 
 # set up intitial environment variables
 option=$1
 pkg_name=$2
@@ -29,6 +28,7 @@ cache_dir="${local_dir}/cache"
 manifest_dir="${local_dir}/manifests"
 local_pkglist="${local_dir}/pkglist"
 
+set -u 
 
 bootstrap () {
     if [ ! "${pkg_name}" ] ; then printf "ERROR: s3pkg dir not specified.\nUSAGE: $0 bootstrap /path/to/s3pkg \n" ; exit 1 ; fi
@@ -63,7 +63,6 @@ get_remote_manifest () {
     aws s3 cp "s3://${bucket_name}/${prefix}/${pkg_name}.manifest" -
 }
 
-# user function to search for packages in remote repo. 
 search () {
     get_remote_manifest | grep ':'
 }
@@ -77,15 +76,15 @@ install () {
             
     aws s3 cp "s3://${bucket_name}/${prefix}/${pkg_name}.manifest" "${manifest_dir}/"
     aws s3 cp "s3://${bucket_name}/${prefix}/${remote_pkg}" "${cache_dir}/" 
-    # untar into cachedir
     pkg_dir="${cache_dir}/${pkg_name}"
     mkdir -p "${pkg_dir}"
     tar xzf "${cache_dir}/${remote_pkg}" -C "${pkg_dir}"/
 
     # move files to destination and apply permissions
     grep -v ':' "${manifest_dir}/${pkg_name}.manifest" | while read -r filename destination permission _ ; do 
-        # need a way to apply correct permissions to created directories!
-        mkdir -p "${destination}"
+        if [ "${filename}" = '[dir]' ] ; then
+            mkdir -v -p -m "${permission}" "${destination}" | cut -f 4 -d ' ' > "${manifest_dir}/${pkg_name}.install"
+        fi
         mv "${cache_dir}/${pkg_name}/${filename}" "${destination}/${filename}" 
         chmod -- "${permission}" "${destination}/${filename}" 
     done 
@@ -98,12 +97,23 @@ install () {
 # remove package function
 # check for manifest in package cache first, if no cache, use get_remote_pkg?
 remove () {
+    # check to see if the package is installed
     if [ ! $(grep "${pkg_name}" "${local_pkglist}") ] ; then
         printf "${pkg_name} does not exist in local package list.\n"
         exit 1
     fi
+    # remove if it is
     printf "Removing ${pkg_name}...\n"
-
+    # delete files (not directories)
+    grep -v ':' "${manifest_dir}/${pkg_name}.manifest" | sed '1!G;h;$!d' | while read -r filename destination permission _ ; do
+        if [ "${filename}" != '[dir]' ] ; then
+            rm "${destination}/${filename}"
+        fi
+    done
+    # delete directories created by install
+    while read directory ; do 
+        rmdir "${directory}" 
+    done < "${pkg_name}.install"
 }
 
 # Do The Thing

@@ -1,6 +1,8 @@
 name: mypackage
 version: 0.1
 description: A short description of the package
-file1 /path/to/destination/file1 0755 
-file2 /path/to/other/file/file2 0644
+{dir} /path/to/destination/folder 0755
+file1 /path/to/destination/folder/file1 0755 
+file2 /path/to/other/file/folder/file2 0644
+{dir} /path/to/configdir 0600
 file3 /path/to/config/file3 0600
