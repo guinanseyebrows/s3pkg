@@ -13,7 +13,7 @@ It's currently written in POSIX sh because I'm a sadist.
 * remove a package: `s3pkg remove <pkg_name>`
 
 ## But *why*?
-![Yeah, why?](https://i.ytimg.com/vi/3Z9yK3sMDUU/maxresdefault.jpg)
+![Yeah, why?](https://i.imgur.com/dfaI4bI.png)
 I don't feel like maintaining an RPM repo or creating .rpm packages for 30-line shell scripts, and I'm sick of manually running 'aws s3 cp' and 'chmod +x' whenever I need to pull a script from an S3 bucket. 
 
 It's also going to be nice not to have to call scripts with paths, since they'll just get installed to /usr/bin/ or whatever.
