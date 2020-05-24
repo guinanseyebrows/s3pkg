@@ -8,6 +8,9 @@ Its goal is to provide an easy way to maintain a custom repository of scripts/ut
 
 It's currently written in POSIX sh because I'm a sadist.
 
+## usage
+`s3pkg <install|remove> <pkgname>`
+
 ## but *why*?
 I don't feel like maintaining an RPM repo or creating .rpm packages for 30-line shell scripts, and I'm sick of manually running 'aws s3 cp' and 'chmod +x' whenever I need to pull a script from an S3 bucket. 
 
